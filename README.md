@@ -14,7 +14,6 @@ Serverless Offline ✅
 GET /todos ✅
 GET /todo/:id ✅
 POST /todo ✅
-Git commit + GitHub push ✅ 
 
 API LEVEL
 
