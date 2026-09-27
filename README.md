@@ -2,6 +2,20 @@
 A two - week fullstack , getting hands on and all 
 
 
+## BACKEND
+PostgreSQL database ✅
+Shared TypeScript package ✅
+DTO / enum / Zod schema ✅
+Repository + parameterized SQL ✅
+Service layer ✅
+CQRS command/query layer ✅
+Serverless Lambda handlers ✅
+Serverless Offline ✅
+GET /todos ✅
+GET /todo/:id ✅
+POST /todo ✅
+Git commit + GitHub push ✅ 
+
 API LEVEL
 
 API commands 
