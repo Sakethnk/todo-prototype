@@ -1,0 +1,37 @@
+service: todo-api
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-south-1
+  environment:
+    DB_PASSWORD: ${env:DB_PASSWORD}
+
+functions:
+  saveTodo:
+    handler: dist/handlers/save-todo.handler
+    events:
+      - http:
+          path: todo
+          method: post
+
+  getTodo:
+    handler: dist/handlers/get-todo.handler
+    events:
+      - http:
+          path: todo/{id}
+          method: get
+
+  getTodos:
+    handler: dist/handlers/get-todos.handler
+    events:
+      - http:
+          path: todos
+          method: get
+
+plugins:
+  - serverless-offline
+
+package:
+  patterns:
+    - "dist/**"
