@@ -262,7 +262,7 @@ The Repository says:
 
 "I need all Todos. I'll ask pool to execute the SQL."
 
-6. Then why do we call repository.getAll()?
+**Then why do we call repository.getAll()?**
 
 Because another layer shouldn't need to know SQL.
 
@@ -277,7 +277,7 @@ repository.getAll()
 That's much cleaner.
 
 So:
-
+```
 Service
    │
    │ "Give me all Todos"
@@ -291,7 +291,7 @@ pool
    │ SQL
    ↓
 PostgreSQL
-
+```
 This is the Repository Pattern from our POC.
 
 **important flow charts**
@@ -310,7 +310,7 @@ repository
      ↓
 repository.getAll()
 
-6. Why don't we just use the class directly?
+**Why don't we just use the class directly?**
 
 This is an important question.
 
