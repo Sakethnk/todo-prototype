@@ -334,3 +334,46 @@ const repository = new TodoRepository();
 Then:
 
 repository.getAll();
+
+**important**
+```
+service → calls repository
+repository → calls pool
+pool → talks to database
+
+```
+```
+const repository = new TodoRepository();
+const service = new TodoService(repository);
+
+Create Repository
+      ↓
+Give Repository to Service
+      ↓
+Now Service can use Repository
+
+```
+```
+                 USER REQUEST
+                      ↓
+                 ┌─────────┐
+                 │ HANDLER │
+                 └────┬────┘
+                      ↓
+                 ┌─────────┐
+                 │ SERVICE │
+                 └────┬────┘
+                      ↓
+               ┌──────────────┐
+               │  REPOSITORY  │
+               └──────┬───────┘
+                      ↓
+                   ┌──────┐
+                   │ POOL │
+                   └──┬───┘
+                      ↓
+                ┌───────────┐
+                │ PostgreSQL│
+                └───────────┘
+
+```
