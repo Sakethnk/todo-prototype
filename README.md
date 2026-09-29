@@ -15,9 +15,9 @@ GET /todos ✅
 GET /todo/:id ✅
 POST /todo ✅
 
-API LEVEL
+## API LEVEL
 
-API commands 
+`API commands` 
 
 Testing command
 Invoke-RestMethod http://localhost:3000/dev/todos
@@ -154,35 +154,6 @@ Todo records
 PowerShell displays them
 ```
 
-That's why we get:
-
-```text
-id          : 1
-title       : Learn TypeScript
-description : Build the Todo prototype
-status      : 0
-```
-
-and later our newly created Todo with `id : 2`.
-
-### Why did we use it?
-
-**To prove that the backend actually works before building the React frontend.**
-
-Eventually, React will make essentially the same HTTP request. Instead of:
-
-```text
-PowerShell → GET /dev/todos
-```
-
-we'll have:
-
-```text
-React → Axios → GET /dev/todos
-```
-
-So the PowerShell command was our **manual API test**. Once React is built, you won't normally need to type that command yourself.
-
 **Important key Relationship**
 ```text 
 pool
@@ -232,7 +203,7 @@ So:
               TodoService
 
 
-5. Now our confusing line becomes easy
+Now our confusing line becomes easy
 
 We wrote:
 
@@ -314,28 +285,6 @@ repository
      ↓
 repository.getAll()
 ```
-
-**Why don't we just use the class directly?**
-
-This is an important question.
-
-You cannot normally do:
-
-TodoRepository.getAll();
-
-because getAll() is an instance method.
-
-It belongs to an object created from the class.
-
-We first create:
-
-const repository = new TodoRepository();
-
-Then:
-
-repository.getAll();
-
-**important**
 ```
 service → calls repository
 repository → calls pool
@@ -376,4 +325,33 @@ Now Service can use Repository
                 │ PostgreSQL│
                 └───────────┘
 
+```
+```
+HANDLER
+"What did the user request?"
+
+        ↓
+
+QUERY / COMMAND
+"What operation are we performing?"
+
+        ↓
+
+SERVICE
+"What should the application do?"
+
+        ↓
+
+REPOSITORY
+"How do I access the data?"
+
+        ↓
+
+POOL
+"How do I communicate with PostgreSQL?"
+
+        ↓
+
+DATABASE
+"Here is the data."
 ```
