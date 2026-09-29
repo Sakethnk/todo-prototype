@@ -154,7 +154,7 @@ Todo records
 PowerShell displays them
 ```
 
-That's why you got:
+That's why we get:
 
 ```text
 id          : 1
@@ -163,7 +163,7 @@ description : Build the Todo prototype
 status      : 0
 ```
 
-and later your newly created Todo with `id : 2`.
+and later our newly created Todo with `id : 2`.
 
 ### Why did we use it?
 
@@ -182,3 +182,150 @@ React → Axios → GET /dev/todos
 ```
 
 So the PowerShell command was our **manual API test**. Once React is built, you won't normally need to type that command yourself.
+
+**Important key Relationship**
+
+pool
+= database communication tool
+
+repository
+= our Todo database-access class
+
+repository.getAll()
+= "TodoRepository, give me all Todos"
+
+pool.query()
+= "database connection, execute this SQL"
+
+Look at this:
+
+pool
+
+and:
+
+repository
+
+They are not the same thing.
+
+pool
+
+Comes from the pg library.
+
+Its job: Talk to PostgreSQL.
+
+repository
+We created it ourselves.
+Its job: Provide Todo-specific database operations.
+
+So:
+
+                PostgreSQL
+                    ↑
+                    │
+                   pool
+                    ↑
+                    │
+             TodoRepository
+                    ↑
+                    │
+              TodoService
+
+
+5. Now our confusing line becomes easy
+
+We wrote:
+
+async getAll(): Promise<TodoDto[]> {
+  const result = await pool.query(`
+    SELECT *
+    FROM todo
+  `);
+
+  return result.rows;
+}
+
+This code is inside TodoRepository.
+
+So:
+
+TodoRepository
+      │
+      │ uses
+      ↓
+     pool
+      │
+      │ communicates with
+      ↓
+ PostgreSQL
+
+The Repository says:
+
+"I need all Todos. I'll ask pool to execute the SQL."
+
+6. Then why do we call repository.getAll()?
+
+Because another layer shouldn't need to know SQL.
+
+Our Service doesn't want to do this:
+
+pool.query("SELECT * FROM todo");
+
+Instead, the Service says:
+
+repository.getAll()
+
+That's much cleaner.
+
+So:
+
+Service
+   │
+   │ "Give me all Todos"
+   ↓
+Repository
+   │
+   │ "I'll handle the database details"
+   ↓
+pool
+   │
+   │ SQL
+   ↓
+PostgreSQL
+
+This is the Repository Pattern from our POC.
+
+**important flow charts**
+
+TodoRepository
+     │
+     │ class / blueprint
+     ↓
+new TodoRepository()
+     │
+     │ creates
+     ↓
+repository
+     │
+     │ object / instance
+     ↓
+repository.getAll()
+
+6. Why don't we just use the class directly?
+
+This is an important question.
+
+You cannot normally do:
+
+TodoRepository.getAll();
+
+because getAll() is an instance method.
+
+It belongs to an object created from the class.
+
+We first create:
+
+const repository = new TodoRepository();
+
+Then:
+
+repository.getAll();
