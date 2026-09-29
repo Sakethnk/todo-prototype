@@ -291,11 +291,13 @@ pool
    │ SQL
    ↓
 PostgreSQL
+
 ```
 This is the Repository Pattern from our POC.
 
 **important flow charts**
 
+```
 TodoRepository
      │
      │ class / blueprint
@@ -309,6 +311,7 @@ repository
      │ object / instance
      ↓
 repository.getAll()
+```
 
 **Why don't we just use the class directly?**
 
