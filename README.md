@@ -184,8 +184,8 @@ React → Axios → GET /dev/todos
 So the PowerShell command was our **manual API test**. Once React is built, you won't normally need to type that command yourself.
 
 **Important key Relationship**
-```
-pool
+```text 
+### pool
 = database communication tool
 
 repository
@@ -197,6 +197,7 @@ repository.getAll()
 pool.query()
 = "database connection, execute this SQL"
 ```
+
 Look at this:
 
 pool
