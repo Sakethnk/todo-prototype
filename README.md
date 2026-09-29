@@ -25,19 +25,19 @@ Invoke-RestMethod http://localhost:3000/dev/todos
 
 POST method 
 Invoke-RestMethod `
->>   -Method Post `
->>   -Uri http://localhost:3000/dev/todo `
->>   -ContentType "application/json" `
->>   -Body '{"title":"Build React UI","description":"Create the Todo frontend","status":0}'
+   -Method Post `
+   -Uri http://localhost:3000/dev/todo `
+   -ContentType "application/json" `
+   -Body '{"title":"Build React UI","description":"Create the Todo frontend","status":0}'
 
-
+```
 GET request 
 Invoke-RestMethod http://localhost:3000/dev/todo/2
 Invoke-RestMethod     → make an HTTP request
 localhost:3000       → your local Serverless API
 /dev                  → development stage
 /todo/2              → get Todo whose id = 2
-
+```
 
 
 
@@ -184,7 +184,7 @@ React → Axios → GET /dev/todos
 So the PowerShell command was our **manual API test**. Once React is built, you won't normally need to type that command yourself.
 
 **Important key Relationship**
-
+```
 pool
 = database communication tool
 
@@ -196,7 +196,7 @@ repository.getAll()
 
 pool.query()
 = "database connection, execute this SQL"
-
+```
 Look at this:
 
 pool
@@ -247,7 +247,7 @@ async getAll(): Promise<TodoDto[]> {
 This code is inside TodoRepository.
 
 So:
-
+```
 TodoRepository
       │
       │ uses
@@ -257,6 +257,7 @@ TodoRepository
       │ communicates with
       ↓
  PostgreSQL
+ ```
 
 The Repository says:
 
