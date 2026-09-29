@@ -355,3 +355,6 @@ POOL
 DATABASE
 "Here is the data."
 ```
+
+## Understanding the complete Tracing of `GET /todos` request for Undersanding `backend architecture`
+
