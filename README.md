@@ -628,7 +628,7 @@ Handler
 ```
 You're right. Here is the **entire raw Markdown in one single block**, with no separation:
 
-````
+
 # Complete `GET /todos` Journey
 
 Starting from the browser/client:
@@ -637,7 +637,7 @@ Starting from the browser/client:
 
 ```http
 GET /todos
-````
+```
 
  The Handler calls:
 
