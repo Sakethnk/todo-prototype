@@ -626,6 +626,222 @@ Query
    ↓
 Handler
 ```
+You're right. Here is the **entire raw Markdown in one single block**, with no separation:
+
+````
+# Complete `GET /todos` Journey
+
+Starting from the browser/client:
+
+## 1. Handler receives the request
+
+```http
+GET /todos
+````
+
+ The Handler calls:
+
+```
+const todos = await query.execute();
+```
+
+ The Handler says:
+
+ > “I need all Todos.”
+
+ ↓
+
+ ## 2\. Query
+
+```
+return this.todoService.getAll();
+```
+
+ The Query says:
+
+ > “Service, perform the get-all operation.”
+
+ ↓
+
+ ## 3\. Service
+
+```
+return this.repository.getAll();
+```
+
+ The Service says:
+
+ > “Repository, get the Todo data.”
+
+ ↓
+
+ ## 4\. Repository
+
+```
+const result = await pool.query(`
+  SELECT ...
+  FROM todo
+  ORDER BY id
+`);
+```
+
+ The Repository says:
+
+ > “Pool, execute this SQL.”
+
+ ↓
+
+ ## 5\. Pool
+
+```
+pool.query(...)
+```
+
+ The Pool communicates with PostgreSQL.
+
+ ↓
+
+ ## 6\. PostgreSQL
+
+ PostgreSQL executes:
+
+```
+SELECT ...
+FROM todo
+ORDER BY id;
+```
+
+ and returns the records.
+
+ ↓
+
+ ## 7\. Repository receives the result
+
+```
+const result = await pool.query(...);
+```
+
+ `await` converts:
+
+```
+Promise<QueryResult>
+```
+
+ into:
+
+```
+QueryResult
+```
+
+ Then:
+
+```
+return result.rows;
+```
+
+ gives us:
+
+```
+TodoDto[]
+```
+
+ ↓
+
+ ## 8\. Data travels back
+
+```
+PostgreSQL
+    ↓
+pool.query()
+    ↓
+Repository
+    ↓
+Service
+    ↓
+Query
+    ↓
+Handler
+```
+
+ ↓
+
+ ## 9\. Handler creates HTTP response
+
+```
+return {
+  statusCode: 200,
+  body: JSON.stringify(todos)
+};
+```
+
+ So the client receives the Todo list.
+
+---
+
+ # 🔑 The One Diagram to Remember
+
+ Don't memorize every filename yet.
+
+ Remember this:
+
+```
+             REQUEST
+                ↓
+             HANDLER
+                ↓
+              QUERY
+                ↓
+             SERVICE
+                ↓
+           REPOSITORY
+                ↓
+               POOL
+                ↓
+           POSTGRESQL
+                ↓
+              DATA
+                ↑
+         result.rows
+```
+
+ ## In Simple Words
+
+```
+Client
+  ↓
+"Give me all Todos"
+  ↓
+Handler
+  ↓
+Query
+  ↓
+Service
+  ↓
+Repository
+  ↓
+Pool
+  ↓
+PostgreSQL
+  ↓
+Todo records
+  ↓
+Repository
+  ↓
+Service
+  ↓
+Query
+  ↓
+Handler
+  ↓
+HTTP 200 + JSON
+  ↓
+Client
+```
+
+ ## Key Idea
+
+ > **The request goes down through the layers to get the data, and the data comes back up through the same layers to reach the client.**
+
 
 
 
