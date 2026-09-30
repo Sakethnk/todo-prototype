@@ -38,73 +38,7 @@ localhost:3000       → your local Serverless API
 /dev                  → development stage
 /todo/2              → get Todo whose id = 2
 ```
-
-**Important key Relationship**
-```text 
-pool
-= database communication tool
-
-repository
-= our Todo database-access class
-
-repository.getAll()
-= "TodoRepository, give me all Todos"
-
-pool.query()
-= "database connection, execute this SQL"
-```
-```
-Service
-   │
-   │ "Give me all Todos"
-   ↓
-Repository
-   │
-   │ "I'll handle the database details"
-   ↓
-pool
-   │
-   │ SQL
-   ↓
-PostgreSQL
-
-```
-This is the Repository Pattern from our POC.
-
-**important flow charts**
-
-```
-TodoRepository
-     │
-     │ class / blueprint
-     ↓
-new TodoRepository()
-     │
-     │ creates
-     ↓
-repository
-     │
-     │ object / instance
-     ↓
-repository.getAll()
-```
-```
-service → calls repository
-repository → calls pool
-pool → talks to database
-
-```
-```
-const repository = new TodoRepository();
-const service = new TodoService(repository);
-
-Create Repository
-      ↓
-Give Repository to Service
-      ↓
-Now Service can use Repository
-
-```
+---
 ```
                  USER REQUEST
                       ↓
@@ -421,6 +355,72 @@ The Repository is communicating directly with your database infrastructure: *“
 We have now reached the absolute core connection of our data architecture: **Repository → Pool → PostgreSQL**.
 
 ---
+**Important key Relationship**
+```text 
+pool
+= database communication tool
+
+repository
+= our Todo database-access class
+
+repository.getAll()
+= "TodoRepository, give me all Todos"
+
+pool.query()
+= "database connection, execute this SQL"
+```
+```
+Service
+   │
+   │ "Give me all Todos"
+   ↓
+Repository
+   │
+   │ "I'll handle the database details"
+   ↓
+pool
+   │
+   │ SQL
+   ↓
+PostgreSQL
+
+```
+This is the Repository Pattern from our POC.
+
+**important flow charts**
+
+```
+TodoRepository
+     │
+     │ class / blueprint
+     ↓
+new TodoRepository()
+     │
+     │ creates
+     ↓
+repository
+     │
+     │ object / instance
+     ↓
+repository.getAll()
+```
+```
+service → calls repository
+repository → calls pool
+pool → talks to database
+
+```
+```
+const repository = new TodoRepository();
+const service = new TodoService(repository);
+
+Create Repository
+      ↓
+Give Repository to Service
+      ↓
+Now Service can use Repository
+
+```
 
 ### What is `pool.query()` actually doing?
 
@@ -841,20 +841,6 @@ Client
  ## Key Idea
 
  > **The request goes down through the layers to get the data, and the data comes back up through the same layers to reach the client.**
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
