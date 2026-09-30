@@ -866,6 +866,7 @@ So if you remember only this, you're in a very good position:
 
 Handler receives → Query/Command decides operation → Service handles business operation → Repository handles data access → Pool talks to DB → result comes back.
 
+---
 
 # AWS Lambda to PostgreSQL Integration
 
