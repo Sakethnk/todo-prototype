@@ -189,9 +189,9 @@ export const handler: APIGatewayProxyHandler = async () => {
 
 At this layer, the **Handler** has one single job: **Receive the HTTP request and trigger the operation.**
 
-*   ❌ It **does not** know how PostgreSQL works.
-*   ❌ It **does not** write raw SQL.
-*   ❌ It **does not** directly fetch the data from the database.
+*   It **does not** know how PostgreSQL works.
+*   It **does not** write raw SQL.
+*   It **does not** directly fetch the data from the database.
 
 Instead, it delegates the work by acting like a manager:
 
@@ -202,20 +202,23 @@ const todos = await query.execute();
 > 🗣️ **In plain English:** 
 > *"Hey Query object, I don't care how you do it behind the scenes, but please perform the operation that gets all Todos for me right now."*
 
-### Architecture Overview
+### Now look at the three objects created above the handler
 
-Three main components are initialized right above the handler:
+Yoyu have 
 
 ```javascript
 const repository = new TodoRepository();
 const service = new TodoService(repository);
 const query = new GetTodosQuery(service);
 ```
+Don't try to understand all three yet.
 
-#### Core Data Flow
-For now, you only need to focus on this single relationship:
-
-\[\text{handler} \longrightarrow \text{query}\]
+Just understand this:
+```
+handler
+   ↓
+query
+```
 
 Because the **handler** has direct access to the `query` object, it can trigger the application logic by executing it directly:
 
