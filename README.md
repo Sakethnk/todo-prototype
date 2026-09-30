@@ -491,13 +491,141 @@ PostgreSQL
 
 ### 🔑 Key Definitions to Remember
 
+Here is the complete breakdown of every layer in our architecture, ordered from the initial incoming request down to the actual database:
+
 | Component | Responsibility | Role in the Ecosystem |
 | :--- | :--- | :--- |
-| **Repository** | Our application's custom database-access class | Formulates the business data requirements |
-| **Pool** | PostgreSQL communication tool provided by `pg` | Manages network sockets and ships the SQL requests |
-| **PostgreSQL** | The external database storage server | Processes the raw SQL and evaluates data tables |
+| **Handler** | The entry point for the web request (`GET /todos`) | Receives the HTTP request, invokes the query, and formats the final HTTP response (e.g., status 200). |
+| **Query** | Defines *what* specific action or data operation we want | Acts as a clean command layer that passes the execution intent down to the application services. |
+| **Service** | Defines *how* the application handles business logic | Orchestrates the operational rules of the app without knowing how data is stored or written in SQL. |
+| **Repository** | Our application's custom database-access class | Formulates the business data requirements and houses the raw SQL statements. |
+| **Pool** | PostgreSQL communication tool provided by `pg` | Manages network sockets, maintains persistent connections, and ships the SQL requests over the wire. |
+| **PostgreSQL** | The external database storage server | Processes the raw SQL, reads the physical data tables, and returns the requested data records. |
+---
+### PostgreSQL Sends the Data Back
+
+Once PostgreSQL processes the query, the data starts its journey back up through our application layers. It begins where we captured the execution reference:
+
+```typescript
+const result = await pool.query(`SELECT ...`);
+```
+
+After executing the SQL, `pool.query()` resolves and yields a **query result object**. 
+
+#### The Promise Resolution Lifecycle
+Recalling how asynchronous promises operate under the hood:
+
+```text
+pool.query(...)
+      ↓
+Promise<QueryResult>
+      ↓  [await]
+   result
+```
+
+---
+
+### Extracting the Dataset: `result.rows`
+
+Immediately after obtaining the query result object, the Repository performs a data extraction step:
+
+```typescript
+return result.rows;
+```
+
+#### What is `result.rows`?
+It is a native JavaScript array containing the raw database records fetched by PostgreSQL. Conceptually, the internal dataset resembles this structure:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Learn TypeScript",
+    "description": "Build the Todo prototype",
+    "status": 0,
+    "createdDate": "2026-09-30T12:00:00.000Z",
+    "updatedDate": "2026-09-30T12:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "title": "Build React UI",
+    "description": "Create the Todo frontend",
+    "status": 0,
+    "createdDate": "2026-09-30T12:05:00.000Z",
+    "updatedDate": "2026-09-30T12:05:00.000Z"
+  }
+]
+```
+
+Executing `return result.rows;` translates to: 
+> *“Extract the structured array of records that PostgreSQL compiled, and hand them directly back to whichever layer invoked this Repository method.”*
+
+---
+
+### The Upward Data Travel Flow
+
+The service layer originally invoked the repository, meaning the data begins climbing back up our structural chain:
+
+```text
+PostgreSQL
+   ↓
+pool.query()
+   ↓
+result
+   ↓
+result.rows
+   ↓
+TodoRepository.getAll()
+   ↓
+TodoService.getAll()
+```
+
+Because our Service signature explicitly implements type safety rules:
+
+```typescript
+async getAll(): Promise<TodoDto[]> {
+  return this.repository.getAll();
+}
+```
+
+The data successfully escapes the database layer fully mapped as a typed array of Data Transfer Objects: **`TodoDto[]`**.
 
 
+entire downward journey:
+```
+GET /todos
+   ↓
+Handler
+   ↓
+Query
+   ↓
+Service
+   ↓
+Repository
+   ↓
+pool.query()
+   ↓
+PostgreSQL
+```
+
+And PostgreSQL's data comes back upward:
+```
+PostgreSQL
+   ↓
+pool.query()
+   ↓
+result
+   ↓
+result.rows
+   ↓
+Repository
+   ↓
+Service
+   ↓
+Query
+   ↓
+Handler
+```
 
 
 
