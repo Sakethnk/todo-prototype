@@ -2223,10 +2223,6 @@ Application Layers
   ↓
 Reachable PostgreSQL
 ```
-
-while preserving the core application architecture.
-
-```
 ---
 
 
