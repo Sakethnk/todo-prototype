@@ -867,7 +867,6 @@ So if you remember only this, you're in a very good position:
 Handler receives → Query/Command decides operation → Service handles business operation → Repository handles data access → Pool talks to DB → result comes back.
 
 
-````markdown
 # AWS Lambda to PostgreSQL Integration
 
 ## 1. Overview
@@ -907,7 +906,7 @@ PostgreSQL Connection Pool
      |
      v
 PostgreSQL Database
-````
+```
 
 The important point is that **AWS Lambda does not directly execute SQL by itself**.
 
