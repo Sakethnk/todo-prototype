@@ -2227,21 +2227,8 @@ Reachable PostgreSQL
 while preserving the core application architecture.
 
 ```
+---
 
-### One thing I strongly recommend for your README
-
-Don't write:
-
-> **“AWS Lambda is connected to PostgreSQL”**
-
-because that would imply you have already deployed and tested the Lambda in AWS.
-
-Write:
-
-> **“The backend is designed for AWS Lambda and is currently tested locally using Serverless Offline with a local PostgreSQL database.”**
-
-That is technically accurate and also makes your architecture much easier for your boss/reviewer to understand.
-```
 
 
 
