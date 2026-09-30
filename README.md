@@ -19,7 +19,7 @@ POST /todo ✅
 
 `API commands` 
 
-Testing command and also get command it will give all todos
+`Testing command` and also `get command` it will give all todos
 `Invoke-RestMethod http://localhost:3000/dev/todos`
 
 ```
@@ -841,7 +841,1407 @@ Client
  ## Key Idea
 
  > **The request goes down through the layers to get the data, and the data comes back up through the same layers to reach the client.**
+---
+One important distinction
 
+For a GET:
+
+Handler → Query → Service → Repository
+
+For a POST/save:
+
+Handler → Command → Service → Repository
+
+Because:
+```
+Query → reading data
+Command → changing/saving data
+```
+
+Everything underneath is essentially the same:
+
+Service → Repository → Pool → PostgreSQL
+
+So if you remember only this, you're in a very good position:
+
+Handler receives → Query/Command decides operation → Service handles business operation → Repository handles data access → Pool talks to DB → result comes back.
+
+
+````markdown
+# AWS Lambda to PostgreSQL Integration
+
+## 1. Overview
+
+This project uses a serverless backend architecture based on:
+
+- Node.js
+- TypeScript
+- AWS Lambda
+- Serverless Framework
+- Serverless Offline
+- PostgreSQL
+- `pg` Node.js PostgreSQL driver
+
+The backend follows a layered architecture:
+
+```text
+HTTP Request
+     |
+     v
+API Gateway / Serverless Offline
+     |
+     v
+AWS Lambda Handler
+     |
+     v
+Command / Query
+     |
+     v
+TodoService
+     |
+     v
+TodoRepository
+     |
+     v
+PostgreSQL Connection Pool
+     |
+     v
+PostgreSQL Database
+````
+
+The important point is that **AWS Lambda does not directly execute SQL by itself**.
+
+Lambda runs our TypeScript/JavaScript application code. Our application uses the `pg` package to communicate with PostgreSQL.
+
+---
+
+# 2. What is AWS Lambda?
+
+AWS Lambda is a serverless compute service.
+
+Instead of running a backend server continuously, we provide AWS with a function that AWS can execute when an event occurs.
+
+For example:
+
+```text
+GET /todos
+```
+
+can trigger a Lambda function:
+
+```text
+getTodos
+```
+
+The Lambda function eventually executes our handler:
+
+```ts
+export const handler = async () => {
+    ...
+};
+```
+
+In this project, the handler is:
+
+```text
+apps/api/src/handlers/get-todos.ts
+```
+
+The basic idea is:
+
+```text
+HTTP Request
+     |
+     v
+AWS Lambda
+     |
+     v
+handler()
+```
+
+Lambda provides the execution environment.
+
+Our application code provides the actual logic.
+
+---
+
+# 3. Where is Lambda defined in this project?
+
+The Lambda functions are configured in:
+
+```text
+apps/api/serverless.yml
+```
+
+For example:
+
+```yaml
+functions:
+  saveTodo:
+    handler: dist/handlers/save-todo.handler
+    events:
+      - http:
+          path: todo
+          method: post
+
+  getTodo:
+    handler: dist/handlers/get-todo.handler
+    events:
+      - http:
+          path: todo/{id}
+          method: get
+
+  getTodos:
+    handler: dist/handlers/get-todos.handler
+    events:
+      - http:
+          path: todos
+          method: get
+```
+
+This configuration tells Serverless:
+
+```text
+Function name
+      |
+      v
+saveTodo
+      |
+      v
+Lambda handler
+      |
+      v
+dist/handlers/save-todo.handler
+```
+
+Similarly:
+
+```text
+getTodo
+    -> dist/handlers/get-todo.handler
+
+getTodos
+    -> dist/handlers/get-todos.handler
+```
+
+---
+
+# 4. What does `serverless.yml` actually do?
+
+`serverless.yml` is a configuration file for the Serverless Framework.
+
+It describes things such as:
+
+* Cloud provider
+* Runtime
+* Region
+* Lambda functions
+* HTTP routes
+* Environment variables
+* Plugins
+* Deployment configuration
+
+Our configuration contains:
+
+```yaml
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-south-1
+```
+
+This means that the intended deployment target is:
+
+```text
+Cloud Provider: AWS
+Runtime: Node.js 20
+Region: ap-south-1
+```
+
+The `functions` section defines the Lambda functions.
+
+---
+
+# 5. Did this project actually deploy Lambda to AWS?
+
+Not yet.
+
+During development, this project uses:
+
+```text
+Serverless Offline
+```
+
+We start it with:
+
+```powershell
+pnpm exec serverless offline
+```
+
+This starts a local environment that allows us to test the Lambda/API architecture without deploying the functions to AWS.
+
+Therefore, our current development architecture is:
+
+```text
+PowerShell / Browser
+        |
+        v
+localhost:3000
+        |
+        v
+Serverless Offline
+        |
+        v
+Lambda-style Handler
+        |
+        v
+Application Layers
+        |
+        v
+Local PostgreSQL
+```
+
+This is different from the final AWS deployment architecture.
+
+---
+
+# 6. Current Local Architecture
+
+During development, the actual architecture is:
+
+```text
+Client
+  |
+  | HTTP Request
+  v
+localhost:3000
+  |
+  v
+Serverless Offline
+  |
+  v
+Lambda Handler
+  |
+  v
+Query / Command
+  |
+  v
+TodoService
+  |
+  v
+TodoRepository
+  |
+  v
+pg Pool
+  |
+  v
+PostgreSQL
+  |
+  v
+todo database
+```
+
+For example:
+
+```text
+GET http://localhost:3000/dev/todos
+```
+
+is handled locally.
+
+Serverless Offline identifies the route:
+
+```text
+GET /todos
+```
+
+and invokes:
+
+```text
+getTodos
+```
+
+which executes:
+
+```text
+get-todos.handler
+```
+
+---
+
+# 7. How does Lambda communicate with PostgreSQL?
+
+This is the most important part.
+
+AWS Lambda itself does not know how to communicate with PostgreSQL automatically.
+
+Our application uses the PostgreSQL Node.js driver:
+
+```text
+pg
+```
+
+We installed it in the API package:
+
+```powershell
+pnpm add pg
+```
+
+The package provides the `Pool` class.
+
+Our project has:
+
+```text
+apps/api/src/db/pool.ts
+```
+
+with:
+
+```ts
+import pg from "pg";
+
+const { Pool } = pg;
+
+export const pool = new Pool({
+  host: "localhost",
+  port: 5432,
+  database: "todo",
+  user: "postgres",
+  password: process.env.DB_PASSWORD
+});
+```
+
+The connection path is:
+
+```text
+Lambda/Application Code
+        |
+        v
+       pg
+        |
+        v
+      Pool
+        |
+        v
+ PostgreSQL Protocol
+        |
+        v
+ PostgreSQL Server
+```
+
+---
+
+# 8. What is `pg`?
+
+`pg` is a Node.js PostgreSQL client library.
+
+It allows our Node.js application to communicate with PostgreSQL.
+
+Without a PostgreSQL driver, our Lambda application would not know how to send PostgreSQL queries.
+
+Conceptually:
+
+```text
+TypeScript / JavaScript
+        |
+        v
+       pg
+        |
+        v
+PostgreSQL connection
+```
+
+---
+
+# 9. What is the PostgreSQL Pool?
+
+We create a connection pool:
+
+```ts
+const { Pool } = pg;
+
+export const pool = new Pool({
+    ...
+});
+```
+
+The pool manages database connections for our application.
+
+Instead of manually opening and closing a new database connection for every query, the pool manages reusable connections.
+
+Our Repository can then execute:
+
+```ts
+pool.query(...)
+```
+
+For example:
+
+```ts
+const result = await pool.query(`
+    SELECT
+        id,
+        title,
+        description,
+        status,
+        created_date AS "createdDate",
+        updated_date AS "updatedDate"
+    FROM todo
+    ORDER BY id
+`);
+```
+
+The flow is:
+
+```text
+Repository
+    |
+    v
+pool.query()
+    |
+    v
+PostgreSQL
+    |
+    v
+Query Result
+```
+
+---
+
+# 10. How does the connection know which PostgreSQL database to use?
+
+The Pool configuration contains:
+
+```ts
+export const pool = new Pool({
+  host: "localhost",
+  port: 5432,
+  database: "todo",
+  user: "postgres",
+  password: process.env.DB_PASSWORD
+});
+```
+
+Each property has a purpose:
+
+| Property   | Meaning                    |
+| ---------- | -------------------------- |
+| `host`     | PostgreSQL server address  |
+| `port`     | PostgreSQL network port    |
+| `database` | Database to connect to     |
+| `user`     | PostgreSQL user            |
+| `password` | PostgreSQL user's password |
+
+For local development:
+
+```text
+host = localhost
+port = 5432
+database = todo
+```
+
+This means:
+
+> Connect to the PostgreSQL server running on my own computer, using the `todo` database.
+
+---
+
+# 11. Where does the PostgreSQL database come from?
+
+PostgreSQL was installed separately on the development machine.
+
+The PostgreSQL installation is not part of the TypeScript project itself.
+
+The project communicates with the PostgreSQL installation.
+
+The local setup is:
+
+```text
+Windows Computer
+    |
+    +-------------------------+
+    |                         |
+    v                         v
+Todo Prototype            PostgreSQL
+    |                         |
+    |                         |
+    +------ database ---------+
+```
+
+The PostgreSQL installation contains the database server.
+
+Our Node.js API connects to that server using `pg`.
+
+---
+
+# 12. Creating the PostgreSQL Database
+
+The database was created using PostgreSQL's command-line client:
+
+```powershell
+psql -U postgres
+```
+
+Then:
+
+```sql
+CREATE DATABASE todo;
+```
+
+After creating it:
+
+```sql
+\c todo
+```
+
+This connects to the `todo` database.
+
+The Todo table was then created:
+
+```sql
+CREATE TABLE todo (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(50) NOT NULL,
+    description VARCHAR(250) NOT NULL,
+    status INT NOT NULL DEFAULT 0,
+    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+The database structure is therefore:
+
+```text
+PostgreSQL Server
+      |
+      v
+    todo
+   Database
+      |
+      v
+    todo
+    Table
+      |
+      +---- id
+      +---- title
+      +---- description
+      +---- status
+      +---- created_date
+      +---- updated_date
+```
+
+---
+
+# 13. Complete GET Request Flow
+
+Let's trace the actual:
+
+```http
+GET /todos
+```
+
+request.
+
+## Step 1 — Client
+
+The client sends:
+
+```http
+GET /todos
+```
+
+During local development:
+
+```text
+http://localhost:3000/dev/todos
+```
+
+---
+
+## Step 2 — Serverless Offline
+
+Serverless Offline receives the HTTP request.
+
+It checks `serverless.yml`:
+
+```yaml
+getTodos:
+  handler: dist/handlers/get-todos.handler
+  events:
+    - http:
+        path: todos
+        method: get
+```
+
+It determines:
+
+```text
+GET /todos
+     |
+     v
+getTodos Lambda
+     |
+     v
+get-todos.handler
+```
+
+---
+
+## Step 3 — Lambda Handler
+
+The handler is:
+
+```ts
+export const handler: APIGatewayProxyHandler = async () => {
+    const todos = await query.execute();
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify(todos)
+    };
+};
+```
+
+The handler delegates the operation to:
+
+```ts
+query.execute()
+```
+
+---
+
+## Step 4 — Query
+
+The query contains:
+
+```ts
+export class GetTodosQuery {
+    constructor(private readonly todoService: TodoService) {}
+
+    async execute() {
+        return this.todoService.getAll();
+    }
+}
+```
+
+So:
+
+```text
+Query
+  |
+  v
+TodoService.getAll()
+```
+
+---
+
+## Step 5 — Service
+
+The Service contains:
+
+```ts
+async getAll(): Promise<TodoDto[]> {
+    return this.repository.getAll();
+}
+```
+
+So:
+
+```text
+Service
+   |
+   v
+Repository.getAll()
+```
+
+---
+
+## Step 6 — Repository
+
+The Repository executes:
+
+```ts
+const result = await pool.query(`
+    SELECT
+        id,
+        title,
+        description,
+        status,
+        created_date AS "createdDate",
+        updated_date AS "updatedDate"
+    FROM todo
+    ORDER BY id
+`);
+```
+
+Now the application has reached the database layer.
+
+---
+
+# 14. PostgreSQL Executes the SQL
+
+PostgreSQL receives:
+
+```sql
+SELECT
+    id,
+    title,
+    description,
+    status,
+    created_date AS "createdDate",
+    updated_date AS "updatedDate"
+FROM todo
+ORDER BY id;
+```
+
+PostgreSQL searches the `todo` table.
+
+It returns the matching records.
+
+Conceptually:
+
+```text
+PostgreSQL
+    |
+    v
+Rows
+```
+
+---
+
+# 15. The Result Comes Back to Node.js
+
+The `pg` library returns a query result.
+
+We store it:
+
+```ts
+const result = await pool.query(...);
+```
+
+Then:
+
+```ts
+result.rows
+```
+
+contains the returned records.
+
+For example:
+
+```ts
+[
+  {
+    id: 1,
+    title: "Learn TypeScript",
+    description: "Build the Todo prototype",
+    status: 0
+  },
+  {
+    id: 2,
+    title: "Build React UI",
+    description: "Create the Todo frontend",
+    status: 0
+  }
+]
+```
+
+The Repository returns:
+
+```ts
+return result.rows;
+```
+
+---
+
+# 16. Data Travels Back Up the Application
+
+The return path is:
+
+```text
+PostgreSQL
+    |
+    v
+pg Pool
+    |
+    v
+Repository
+    |
+    v
+Service
+    |
+    v
+Query
+    |
+    v
+Handler
+```
+
+The Handler receives:
+
+```ts
+const todos = await query.execute();
+```
+
+Then returns:
+
+```ts
+return {
+    statusCode: 200,
+    body: JSON.stringify(todos)
+};
+```
+
+---
+
+# 17. Complete Local Flow
+
+The complete flow is:
+
+```text
+                 LOCAL DEVELOPMENT
+
+Client
+  |
+  | GET /todos
+  v
+Serverless Offline
+  |
+  v
+Lambda Handler
+  |
+  v
+GetTodosQuery
+  |
+  v
+TodoService
+  |
+  v
+TodoRepository
+  |
+  v
+pg Pool
+  |
+  v
+PostgreSQL
+  |
+  | Query Result
+  v
+pg Pool
+  |
+  v
+TodoRepository
+  |
+  v
+TodoService
+  |
+  v
+GetTodosQuery
+  |
+  v
+Lambda Handler
+  |
+  v
+HTTP Response
+  |
+  v
+Client
+```
+
+---
+
+# 18. What Changes When We Deploy to AWS?
+
+The application layers remain mostly the same.
+
+The major difference is the infrastructure surrounding them.
+
+### Local development
+
+```text
+Client
+  |
+  v
+localhost
+  |
+  v
+Serverless Offline
+  |
+  v
+Lambda-style execution
+  |
+  v
+Node.js Application
+  |
+  v
+Local PostgreSQL
+```
+
+### AWS deployment
+
+```text
+Client
+  |
+  v
+API Gateway
+  |
+  v
+AWS Lambda
+  |
+  v
+Node.js Application
+  |
+  v
+pg Pool
+  |
+  v
+Remote PostgreSQL
+```
+
+The important point is:
+
+> **Lambda does not replace PostgreSQL. Lambda runs the application code, while PostgreSQL remains the database.**
+
+---
+
+# 19. How Would AWS Lambda Connect to PostgreSQL?
+
+For a real AWS deployment, PostgreSQL must be reachable from the Lambda environment.
+
+A typical AWS architecture could be:
+
+```text
+                         AWS CLOUD
+                              |
+                              v
+                       API Gateway
+                              |
+                              v
+                        AWS Lambda
+                              |
+                              v
+                         Node.js
+                              |
+                              v
+                            pg
+                              |
+                              v
+                       PostgreSQL
+```
+
+If PostgreSQL is hosted inside AWS, a common architecture is:
+
+```text
+                         AWS CLOUD
+
+                        API Gateway
+                              |
+                              v
+                         AWS Lambda
+                              |
+                              v
+                         VPC Network
+                              |
+                              v
+                      Amazon RDS PostgreSQL
+```
+
+The Lambda function needs network access to the PostgreSQL database.
+
+The database connection configuration would use the database's network hostname rather than:
+
+```text
+localhost
+```
+
+For example:
+
+```ts
+const pool = new Pool({
+    host: process.env.DB_HOST,
+    port: 5432,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD
+});
+```
+
+The exact networking configuration depends on where PostgreSQL is hosted.
+
+---
+
+# 20. Why `localhost` is Important
+
+Our current code contains:
+
+```ts
+host: "localhost"
+```
+
+This works because PostgreSQL is running on the same development machine.
+
+But if Lambda runs in AWS:
+
+```text
+Lambda
+```
+
+and PostgreSQL is on your personal computer:
+
+```text
+Your PC
+```
+
+then:
+
+```text
+localhost
+```
+
+inside Lambda means:
+
+> **the Lambda execution environment itself**
+
+It does NOT mean your personal computer.
+
+Therefore this would not work in production:
+
+```text
+AWS Lambda
+   |
+   | localhost:5432
+   X
+Your PC PostgreSQL
+```
+
+For production, PostgreSQL needs to be hosted somewhere reachable by the Lambda environment.
+
+---
+
+# 21. Environment Variables
+
+The database password should not be hardcoded into source code.
+
+Our project uses:
+
+```ts
+password: process.env.DB_PASSWORD
+```
+
+and `serverless.yml` contains:
+
+```yaml
+provider:
+  environment:
+    DB_PASSWORD: ${env:DB_PASSWORD}
+```
+
+This means:
+
+```text
+Operating System Environment
+          |
+          v
+      DB_PASSWORD
+          |
+          v
+   Serverless Framework
+          |
+          v
+     Lambda environment
+          |
+          v
+      Node.js code
+          |
+          v
+      process.env.DB_PASSWORD
+```
+
+This keeps the password outside the source code.
+
+Sensitive credentials should never be committed to GitHub.
+
+---
+
+# 22. Why use a Connection Pool?
+
+A Lambda function can receive many requests.
+
+Creating a completely new database connection for every query can be inefficient.
+
+A connection pool allows the application to manage database connections.
+
+Conceptually:
+
+```text
+Lambda
+  |
+  v
+Connection Pool
+  |
+  +---- Connection 1
+  |
+  +---- Connection 2
+  |
+  +---- Connection 3
+  |
+  v
+PostgreSQL
+```
+
+The exact number of connections depends on the configuration and deployment environment.
+
+In serverless architectures, database connection management requires additional care because Lambda can create multiple concurrent execution environments.
+
+---
+
+# 23. Important Security Considerations
+
+A production implementation should consider:
+
+### Credentials
+
+Do not commit:
+
+```text
+DB_PASSWORD
+```
+
+to Git.
+
+Use:
+
+* AWS Secrets Manager
+* AWS Systems Manager Parameter Store
+* environment variables
+* another secure secret-management mechanism
+
+depending on the deployment architecture.
+
+### Network access
+
+The database should not simply be exposed publicly without appropriate security controls.
+
+For AWS-hosted PostgreSQL, network security can involve:
+
+```text
+VPC
+Security Groups
+Private Subnets
+RDS
+Lambda networking
+```
+
+### SQL Injection
+
+The Repository uses parameterized queries for values.
+
+For example:
+
+```ts
+WHERE id = $1
+```
+
+and:
+
+```ts
+[id]
+```
+
+instead of directly constructing SQL with user input.
+
+This is an important security practice.
+
+---
+
+# 24. The Most Important Mental Model
+
+The easiest way to understand the complete system is:
+
+```text
+                APPLICATION
+
+        Lambda runs our code
+                 |
+                 v
+              Handler
+                 |
+                 v
+          Query / Command
+                 |
+                 v
+              Service
+                 |
+                 v
+            Repository
+                 |
+                 v
+              pg Pool
+                 |
+                 v
+             PostgreSQL
+```
+
+So:
+
+```text
+Lambda
+  =
+"Where our backend code executes"
+
+pg
+  =
+"How our Node.js code talks to PostgreSQL"
+
+PostgreSQL
+  =
+"Where our actual Todo data is stored"
+```
+
+These are three different responsibilities.
+
+---
+
+# 25. Current Project vs Production Project
+
+## Current project
+
+```text
+                    LOCAL PC
+
+Client
+  |
+  v
+Serverless Offline
+  |
+  v
+Lambda-style Handler
+  |
+  v
+Application
+  |
+  v
+pg
+  |
+  v
+Local PostgreSQL
+```
+
+This is what has currently been implemented and tested.
+
+## Intended AWS deployment
+
+```text
+                    AWS
+
+Client
+  |
+  v
+API Gateway
+  |
+  v
+AWS Lambda
+  |
+  v
+Application
+  |
+  v
+pg
+  |
+  v
+Reachable PostgreSQL
+(e.g. Amazon RDS PostgreSQL)
+```
+
+The application code and architecture are designed so that the execution environment can move from local Serverless Offline to AWS Lambda.
+
+---
+
+# 26. Summary
+
+The complete concept can be summarized as:
+
+```text
+Serverless Framework
+        |
+        | defines
+        v
+AWS Lambda Functions
+        |
+        | execute
+        v
+TypeScript Handler
+        |
+        v
+Query / Command
+        |
+        v
+Service
+        |
+        v
+Repository
+        |
+        | uses
+        v
+pg PostgreSQL Driver
+        |
+        v
+Connection Pool
+        |
+        v
+PostgreSQL
+```
+
+During development:
+
+```text
+Serverless Offline
+```
+
+simulates the Lambda/API environment locally.
+
+Therefore, the current prototype proves the application flow locally:
+
+```text
+HTTP
+  ↓
+Lambda-style Handler
+  ↓
+Application Layers
+  ↓
+PostgreSQL
+```
+
+A future AWS deployment would replace the local infrastructure with:
+
+```text
+API Gateway
+  ↓
+AWS Lambda
+  ↓
+Application Layers
+  ↓
+Reachable PostgreSQL
+```
+
+while preserving the core application architecture.
+
+```
+
+### One thing I strongly recommend for your README
+
+Don't write:
+
+> **“AWS Lambda is connected to PostgreSQL”**
+
+because that would imply you have already deployed and tested the Lambda in AWS.
+
+Write:
+
+> **“The backend is designed for AWS Lambda and is currently tested locally using Serverless Offline with a local PostgreSQL database.”**
+
+That is technically accurate and also makes your architecture much easier for your boss/reviewer to understand.
+```
 
 
 
