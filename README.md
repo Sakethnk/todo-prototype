@@ -225,6 +225,68 @@ Because the **handler** has direct access to the `query` object, it can trigger 
 ```javascript
 query.execute();
 ```
+### Request Flow Architecture
+
+Inside `get-todos.ts`, the query is initialized and executed:
+
+```typescript
+const query = new GetTodosQuery(service);
+```
+
+and then:
+
+```typescript
+const todos = await query.execute();
+```
+
+Initially, the high-level flow looks like this:
+
+```text
+GET /todos
+   ↓
+get-todos.ts
+   ↓
+query.execute()
+```
+
+---
+
+### Diving Deeper: What does `query.execute()` actually do?
+
+If you open `apps/api/src/queries/get-todos.query.ts`, you will find the following code:
+
+```typescript
+export class GetTodosQuery {
+  constructor(private readonly todoService: TodoService) {}
+
+  async execute() {
+    return this.todoService.getAll();
+  }
+}
+```
+
+The core line of execution is:
+```typescript
+return this.todoService.getAll();
+```
+
+Essentially, the **Query** layer tells the lower layer: *“Service, give me all the Todos.”*
+
+---
+
+### Final Complete Execution Chain
+
+Combining these pieces gives us the full, end-to-end flow of data:
+
+```text
+GET /todos
+   ↓
+get-todos.ts
+   ↓
+GetTodosQuery.execute()
+   ↓
+TodoService.getAll()
+```
 
 
 
