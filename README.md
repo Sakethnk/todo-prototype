@@ -19,7 +19,7 @@ POST /todo ✅
 
 `API commands` 
 
-Testing command
+Testing command and also get command it will give all todos
 `Invoke-RestMethod http://localhost:3000/dev/todos`
 
 ```
@@ -53,88 +53,6 @@ repository.getAll()
 pool.query()
 = "database connection, execute this SQL"
 ```
-
-Look at this:
-
-pool
-
-and:
-
-repository
-
-They are not the same thing.
-
-pool
-
-Comes from the pg library.
-
-Its job: Talk to PostgreSQL.
-
-repository
-We created it ourselves.
-Its job: Provide Todo-specific database operations.
-
-So:
-
-                PostgreSQL
-                    ↑
-                    │
-                   pool
-                    ↑
-                    │
-             TodoRepository
-                    ↑
-                    │
-              TodoService
-
-
-Now our confusing line becomes easy
-
-We wrote:
-
-async getAll(): Promise<TodoDto[]> {
-  const result = await pool.query(`
-    SELECT *
-    FROM todo
-  `);
-
-  return result.rows;
-}
-
-This code is inside TodoRepository.
-
-So:
-```
-TodoRepository
-      │
-      │ uses
-      ↓
-     pool
-      │
-      │ communicates with
-      ↓
- PostgreSQL
- ```
-
-The Repository says:
-
-"I need all Todos. I'll ask pool to execute the SQL."
-
-**Then why do we call repository.getAll()?**
-
-Because another layer shouldn't need to know SQL.
-
-Our Service doesn't want to do this:
-
-pool.query("SELECT * FROM todo");
-
-Instead, the Service says:
-
-repository.getAll()
-
-That's much cleaner.
-
-So:
 ```
 Service
    │
@@ -242,4 +160,90 @@ DATABASE
 ```
 
 ## Understanding the complete Tracing of `GET /todos` request for Undersanding `backend architecture`
+# Request ennters the Handler
+`GET http://localhost:3000/dev/todos`
+serverless sees 
+```
+Yaml-
+
+getTodos:
+  handler: dist/handlers/get-todos.handler
+  events:
+    - http:
+        path: todos
+        method: get
+```
+So Serverless says: “A GET request came to /todos. I need to run get-todos.handler.”
+our handler contains 
+```
+export const handler: APIGatewayProxyHandler = async () => {
+  const todos = await query.execute();
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(todos)
+  };
+};
+```
+# 🔄 The Handler's Responsibility
+
+At this layer, the **Handler** has one single job: **Receive the HTTP request and trigger the operation.**
+
+*   ❌ It **does not** know how PostgreSQL works.
+*   ❌ It **does not** write raw SQL.
+*   ❌ It **does not** directly fetch the data from the database.
+
+Instead, it delegates the work by acting like a manager:
+
+```typescript
+const todos = await query.execute();
+```
+
+> 🗣️ **In plain English:** 
+> *"Hey Query object, I don't care how you do it behind the scenes, but please perform the operation that gets all Todos for me right now."*
+
+### Architecture Overview
+
+Three main components are initialized right above the handler:
+
+```javascript
+const repository = new TodoRepository();
+const service = new TodoService(repository);
+const query = new GetTodosQuery(service);
+```
+
+#### Core Data Flow
+For now, you only need to focus on this single relationship:
+
+\[\text{handler} \longrightarrow \text{query}\]
+
+Because the **handler** has direct access to the `query` object, it can trigger the application logic by executing it directly:
+
+```javascript
+query.execute();
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
